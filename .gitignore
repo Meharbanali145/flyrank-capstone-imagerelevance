@@ -1,0 +1,6 @@
+node_modules/
+.env
+corpus/*.jpg
+*.log
+
+flyrank-capstone-imagerelevance.txt
