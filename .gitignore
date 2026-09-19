@@ -4,3 +4,9 @@ corpus/*.jpg
 *.log
 logs/*.jsonl
 corpus/image-metadata.json
+corpus/image-embeddings.json
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/approvals.json
+flyrank-capstone-imagerelevance.txt

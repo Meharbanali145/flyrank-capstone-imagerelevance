@@ -1,0 +1,26 @@
+﻿run: npm run dev
+seed: npm run fetch-corpus && npm run ingest && npm run embed-images && npm run migrate-db
+test: npm run eval
+base_url: http://localhost:3000
+endpoints:
+  - method: POST
+    path: /posts/match
+    description: Embed post text, rank candidate images, run the mismatch guard, persist the decision.
+  - method: POST
+    path: /posts/match/force
+    description: Same as /posts/match but evaluates a specific candidate file instead of the top-ranked one (used to test the guard against a forced mismatch).
+  - method: GET
+    path: /images
+    description: List all tagged images with category, subject, confidence, needsReview.
+  - method: GET
+    path: /suggestions
+    description: List every match decision ever made, most recent first.
+  - method: POST
+    path: /reviews
+    description: Record a human approve/reject decision on a post/image pairing.
+  - method: GET
+    path: /reviews
+    description: List every recorded review decision, most recent first.
+  - method: GET
+    path: /health
+    description: Health check.
