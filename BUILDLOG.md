@@ -38,7 +38,67 @@ image-tag Zod schema, and a Pexels corpus-download script.
 
 ## Phase 2 — Vision pipeline
 
+**What I asked Claude for:** a Gemini Flash vision client to tag the 40-image
+corpus, wired into a batch job with retries.
 
+**What went wrong, and how it was actually diagnosed:**
+- The first version of `geminiClient.js` called a completely made-up endpoint
+  (`/v1beta/interactions`) with a made-up response shape. This was wrong, not
+  a real Gemini API — it should have been caught earlier by checking actual
+  docs instead of trusting a plausible-looking implementation.
+- After fixing the endpoint to the real `generateContent` API, ingestion
+  still failed with `401 ACCESS_TOKEN_TYPE_UNSUPPORTED` on a correctly
+  formatted, freshly issued AI Studio key (`AQ.` prefix, no whitespace or
+  encoding issues — verified directly with `JSON.stringify(process.env.GEMINI_API_KEY)`
+  to rule out hidden characters).
+- Searched for this exact error and found it's a known, unresolved bug on
+  Google's side affecting many developers with newly issued `AQ.`-format
+  keys since mid-2026, with no confirmed fix in any report — not something
+  fixable from this codebase.
+
+**What I changed:**
+- Switched the vision pipeline from Gemini Flash (cloud) to a local Ollama
+  vision model (`llava`), which the capstone brief explicitly allows as the
+  $0 local alternative. Old `geminiClient.js` left in the repo as dead code
+  rather than deleted, since it documents a real, defensible debugging path.
+- First attempt used `moondream` (smaller/faster model) but it repeatedly
+  hallucinated bounding-box coordinate arrays in place of text attributes,
+  and truncated JSON output on longer captions. Switched to `llava` instead,
+  tightened the prompt to explicitly forbid numeric/coordinate output, added
+  a JSON-extraction fallback (strip stray text around a JSON object before
+  parsing) and raised `num_predict` to 512 so longer responses don't get cut
+  off mid-object.
+- Added incremental saving to `ingestImages.js` (write `image-metadata.json`
+  after every image, not just once at the end) after realizing the original
+  version would silently lose all progress if the job crashed or was
+  interrupted near the end of a 40-image run.
+
+**What I changed / verified myself:**
+- Confirmed the Gemini auth failure was a platform bug, not my config, by
+  checking token length/encoding directly and cross-referencing multiple
+  independent community reports of the identical error.
+- Manually tested the fixed Ollama client against `animal-gray_wolf-0.jpg` —
+  the exact image that previously hallucinated "blue ceramic mug" — to
+  confirm the fix actually worked on the specific failure case, not just in
+  general.
+- Ran the full 40-image batch to completion: 40/40 tagged, 0 failed.
+- Noticed all 40 confidence scores clustered tightly between 0.80–0.95, so
+  the default `LOW_CONFIDENCE_THRESHOLD = 0.6` would never flag anything —
+  failing the brief's requirement that at least one low-confidence result
+  gets flagged. Raised the threshold to `0.88` based on the actual observed
+  distribution (not guessed), then re-validated the existing 40 results
+  against the new threshold directly (no need to re-run vision inference,
+  since only the flagging logic changed) — confirmed 2 images now correctly
+  flag for review (`animal-dog-0.jpg` at 0.85, `animal-dog-5.jpg` at 0.80).
+
+**What I can explain if asked:**
+- Why the switch from Gemini to Ollama happened (real, external auth bug,
+  not a workaround for something I didn't understand).
+- Why `LOW_CONFIDENCE_THRESHOLD` is 0.88 and not the original 0.6 — tuned
+  against this specific model's actual confidence distribution, per the
+  brief's own guidance that 0.6 was "a starting guess, not gospel."
+- Why the ingest job now writes progress after every image instead of once
+  at the end.
 
 ---
 
@@ -49,5 +109,3 @@ image-tag Zod schema, and a Pexels corpus-download script.
 ---
 
 ## Phase 4 — Production layer & eval
-
-

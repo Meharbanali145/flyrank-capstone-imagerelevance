@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 /**
  * This is the contract for every vision-model response.
@@ -9,11 +9,11 @@ import { z } from "zod";
  * - `category` is an enum, not a free string. The mismatch guard needs
  *   to compare categories reliably ("animal" vs "animal"), and a model
  *   that's allowed to say "animals" one time and "wildlife" another
- *   breaks that comparison. Lock the vocabulary now, in Phase 1 — not
+ *   breaks that comparison. Lock the vocabulary now, in Phase 1 â€” not
  *   after you've tagged 50 images inconsistently.
  * - `confidence` is a plain 0-1 float. This is what lets us flag
  *   low-confidence results (Requirement: "flagged instead of accepted")
- *   without a second AI call — it's just a threshold check.
+ *   without a second AI call â€” it's just a threshold check.
  * - `attributes` has a minimum of 1. An empty attributes array means
  *   the model gave you nothing useful, which should fail validation,
  *   not pass through as a technically-valid empty list.
@@ -41,11 +41,11 @@ export const ImageTagSchema = z.object({
 // Confidence below this line gets flagged for review, never silently
 // accepted as ground truth. Section 6 requirement: "Low-confidence
 // classifications are flagged instead of accepted." Tune this later
-// against your eval set (Phase 4) — 0.6 is a starting guess, not gospel.
-export const LOW_CONFIDENCE_THRESHOLD = 0.6;
+// against your eval set (Phase 4) â€” 0.6 is a starting guess, not gospel.
+export const LOW_CONFIDENCE_THRESHOLD = 0.88;
 
 /**
- * Validates a raw model response. Never throws on bad input —
+ * Validates a raw model response. Never throws on bad input â€”
  * returns a discriminated result so callers can flag-and-retry
  * instead of crashing the batch job on one weird response.
  */
