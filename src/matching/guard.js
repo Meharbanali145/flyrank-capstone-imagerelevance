@@ -2,7 +2,7 @@
 
 // Tentative starting points — will tune against real measured data in
 // the next step, per the brief: "set with your eval data, not guessed."
-export const SIMILARITY_FLOOR = 0.65;
+export const SIMILARITY_FLOOR = 0.5;
 export const SUBJECT_MISMATCH_THRESHOLD = 0.65;
 
 /**
@@ -11,10 +11,14 @@ export const SUBJECT_MISMATCH_THRESHOLD = 0.65;
  */
 export function rankCandidates(postEmbedding, imageEmbeddings) {
   return imageEmbeddings
-    .map((img) => ({
-      ...img,
-      similarity: cosineSimilarity(postEmbedding, img.captionEmbedding),
-    }))
+    .map((img) => {
+      const captionSim = cosineSimilarity(postEmbedding, img.captionEmbedding);
+      const subjectSim = cosineSimilarity(postEmbedding, img.subjectEmbedding);
+      // Take the best of the two: a post that names the subject plainly
+      // ("Vulpes vulpes") should not be penalized just because the full
+      // caption sentence adds unrelated words the post never uses.
+      return { ...img, similarity: Math.max(captionSim, subjectSim) };
+    })
     .sort((a, b) => b.similarity - a.similarity);
 }
 
@@ -94,3 +98,4 @@ export function matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateF
       : "Accepted.",
   };
 }
+

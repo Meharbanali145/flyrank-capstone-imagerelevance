@@ -1,0 +1,137 @@
+{
+  "precision": 0.9166666666666666,
+  "results": [
+    {
+      "id": 1,
+      "text": "The behavior of red foxes in the wild",
+      "topRanked": "animal-red_fox-6.jpg",
+      "topSimilarity": 0.7204787352457069,
+      "guardDecision": "accepted",
+      "guardCandidate": "animal-red_fox-6.jpg",
+      "guardSubject": "red fox",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 2,
+      "text": "Tracking gray wolf packs through the forest",
+      "topRanked": "animal-gray_wolf-1.jpg",
+      "topSimilarity": 0.6933897077282587,
+      "guardDecision": "accepted",
+      "guardCandidate": "animal-gray_wolf-1.jpg",
+      "guardSubject": "wolf",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 3,
+      "text": "Why dogs make the best family pets",
+      "topRanked": "animal-dog-2.jpg",
+      "topSimilarity": 0.5377007873513466,
+      "guardDecision": "accepted",
+      "guardCandidate": "animal-dog-2.jpg",
+      "guardSubject": "dogs",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 4,
+      "text": "Hiking the alpine trails of the Rockies",
+      "topRanked": "landscape-mountain_landscape-5.jpg",
+      "topSimilarity": 0.534061379991892,
+      "guardDecision": "accepted",
+      "guardCandidate": "landscape-mountain_landscape-5.jpg",
+      "guardSubject": "mountain range",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 5,
+      "text": "Snow-capped peaks and how they form",
+      "topRanked": "landscape-mountain_landscape-5.jpg",
+      "topSimilarity": 0.7193155255109575,
+      "guardDecision": "accepted",
+      "guardCandidate": "landscape-mountain_landscape-5.jpg",
+      "guardSubject": "mountain range",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 6,
+      "text": "A tour of modern glass skyscrapers downtown",
+      "topRanked": "architecture-modern_architecture_building-0.jpg",
+      "topSimilarity": 0.6767761881946457,
+      "guardDecision": "accepted",
+      "guardCandidate": "architecture-modern_architecture_building-0.jpg",
+      "guardSubject": "architecture",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 7,
+      "text": "The rise of brutalist concrete architecture",
+      "topRanked": "architecture-modern_architecture_building-5.jpg",
+      "topSimilarity": 0.5674214606992558,
+      "guardDecision": "accepted",
+      "guardCandidate": "architecture-modern_architecture_building-5.jpg",
+      "guardSubject": "building",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 8,
+      "text": "Ten fresh salad recipes for summer",
+      "topRanked": "food-fresh_food_plate-0.jpg",
+      "topSimilarity": 0.508930784835112,
+      "guardDecision": "accepted",
+      "guardCandidate": "food-fresh_food_plate-0.jpg",
+      "guardSubject": "food",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 9,
+      "text": "Plating techniques used by professional chefs",
+      "topRanked": "food-fresh_food_plate-0.jpg",
+      "topSimilarity": 0.5579820635529664,
+      "guardDecision": "accepted",
+      "guardCandidate": "food-fresh_food_plate-0.jpg",
+      "guardSubject": "food",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 10,
+      "text": "Vulpes vulpes: a wild fox species profile",
+      "topRanked": "animal-red_fox-4.jpg",
+      "topSimilarity": 0.597382665609602,
+      "guardDecision": "accepted",
+      "guardCandidate": "animal-red_fox-4.jpg",
+      "guardSubject": "red fox",
+      "guardReason": "Accepted.",
+      "correct": true
+    },
+    {
+      "id": 11,
+      "text": "A guide to identifying constellations in the night sky",
+      "topRanked": "landscape-mountain_landscape-3.jpg",
+      "topSimilarity": 0.6361697397803617,
+      "guardDecision": "accepted",
+      "guardCandidate": "landscape-mountain_landscape-3.jpg",
+      "guardSubject": "mountain range",
+      "guardReason": "Accepted.",
+      "correct": false
+    },
+    {
+      "id": 12,
+      "text": "How to fix a leaking kitchen faucet",
+      "topRanked": "food-fresh_food_plate-0.jpg",
+      "topSimilarity": 0.4847369978294023,
+      "guardDecision": "no_match",
+      "guardCandidate": null,
+      "guardSubject": null,
+      "guardReason": "No image cleared the similarity floor (best: 0.485 < 0.5)",
+      "correct": true
+    }
+  ]
+}

@@ -4,21 +4,34 @@ import axios from "axios";
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 const EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
 
+// nomic-embed-text is trained asymmetrically: queries and the documents
+// they're searched against need different task prefixes to land in a
+// properly comparable space. Skipping this silently degrades similarity
+// quality without erroring - it just produces noisier scores.
+const PREFIXES = {
+  query: "search_query: ",
+  document: "search_document: ",
+};
+
 /**
- * Returns a numeric embedding vector for a piece of text, using a local
- * Ollama embedding model. Used for both image captions/tags and post
- * content, so they land in the same vector space and are comparable.
+ * taskType: "query" for post text being searched with, "document" for
+ * image captions/subjects being searched against. Required for
+ * nomic-embed-text to produce well-calibrated similarity scores.
  */
-export async function embedText(text) {
+export async function embedText(text, taskType = "document") {
   if (!text || !text.trim()) {
     throw new Error("embedText called with empty text");
+  }
+  const prefix = PREFIXES[taskType];
+  if (!prefix) {
+    throw new Error(`Unknown taskType "${taskType}", expected "query" or "document"`);
   }
 
   let res;
   try {
     res = await axios.post(`${OLLAMA_HOST}/api/embeddings`, {
       model: EMBED_MODEL,
-      prompt: text,
+      prompt: prefix + text,
     }, { timeout: 60000 });
   } catch (err) {
     if (err.code === "ECONNREFUSED") {
@@ -34,10 +47,6 @@ export async function embedText(text) {
   return embedding;
 }
 
-/**
- * Cosine similarity between two equal-length vectors. Returns a value
- * in [-1, 1]; for embeddings in practice this is almost always [0, 1].
- */
 export function cosineSimilarity(a, b) {
   if (a.length !== b.length) {
     throw new Error(`Vector length mismatch: ${a.length} vs ${b.length}`);

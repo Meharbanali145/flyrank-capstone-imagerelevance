@@ -1,0 +1,14 @@
+﻿[
+  { "id": 1, "text": "The behavior of red foxes in the wild", "expectedCategory": "animal", "expectedSubjectGroup": ["red fox"] },
+  { "id": 2, "text": "Tracking gray wolf packs through the forest", "expectedCategory": "animal", "expectedSubjectGroup": ["wolf"] },
+  { "id": 3, "text": "Why dogs make the best family pets", "expectedCategory": "animal", "expectedSubjectGroup": ["dog", "dogs", "puppy"] },
+  { "id": 4, "text": "Hiking the alpine trails of the Rockies", "expectedCategory": "landscape", "expectedSubjectGroup": null },
+  { "id": 5, "text": "Snow-capped peaks and how they form", "expectedCategory": "landscape", "expectedSubjectGroup": null },
+  { "id": 6, "text": "A tour of modern glass skyscrapers downtown", "expectedCategory": "architecture", "expectedSubjectGroup": null },
+  { "id": 7, "text": "The rise of brutalist concrete architecture", "expectedCategory": "architecture", "expectedSubjectGroup": null },
+  { "id": 8, "text": "Ten fresh salad recipes for summer", "expectedCategory": "food", "expectedSubjectGroup": null },
+  { "id": 9, "text": "Plating techniques used by professional chefs", "expectedCategory": "food", "expectedSubjectGroup": null },
+  { "id": 10, "text": "Vulpes vulpes: a wild fox species profile", "expectedCategory": "animal", "expectedSubjectGroup": ["red fox"] },
+  { "id": 11, "text": "A guide to identifying constellations in the night sky", "expectedCategory": null, "expectedSubjectGroup": null },
+  { "id": 12, "text": "How to fix a leaking kitchen faucet", "expectedCategory": null, "expectedSubjectGroup": null }
+]

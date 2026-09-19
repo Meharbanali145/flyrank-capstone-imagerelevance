@@ -15,8 +15,8 @@ async function main() {
   const results = [];
   for (const entry of tagged) {
     const { file, tags, needsReview } = entry;
-    const captionEmbedding = await embedText(tags.caption);
-    const subjectEmbedding = await embedText(tags.subject);
+    const captionEmbedding = await embedText(tags.caption, "document");
+    const subjectEmbedding = await embedText(tags.subject, "document");
     results.push({
       file,
       subject: tags.subject,
@@ -37,3 +37,4 @@ main().catch((err) => {
   console.error("Embedding job crashed:", err.message);
   process.exit(1);
 });
+
