@@ -1,40 +1,24 @@
 ﻿import { cosineSimilarity } from "./embeddings.js";
 
-// Tentative starting points — will tune against real measured data in
-// the next step, per the brief: "set with your eval data, not guessed."
 export const SIMILARITY_FLOOR = 0.5;
-export const SUBJECT_MISMATCH_THRESHOLD = 0.65;
+// Bare 1-2 word subject strings ("wolf", "dog") don't carry enough context
+// to discriminate species reliably - measured wolf-vs-dog subject
+// similarity at 0.816, HIGHER than fox-vs-wolf (0.715), making any subject-
+// word threshold unsafe. Full captions discriminate far better: same-
+// species caption similarity measured ~0.90, cross-species 0.63-0.72.
+// This threshold operates on captionEmbedding, not subjectEmbedding.
+export const SUBJECT_MISMATCH_THRESHOLD = 0.80;
 
-/**
- * Ranks every candidate image against a post embedding by caption
- * similarity, descending. This is the semantic ranking step.
- */
 export function rankCandidates(postEmbedding, imageEmbeddings) {
   return imageEmbeddings
     .map((img) => {
       const captionSim = cosineSimilarity(postEmbedding, img.captionEmbedding);
       const subjectSim = cosineSimilarity(postEmbedding, img.subjectEmbedding);
-      // Take the best of the two: a post that names the subject plainly
-      // ("Vulpes vulpes") should not be penalized just because the full
-      // caption sentence adds unrelated words the post never uses.
       return { ...img, similarity: Math.max(captionSim, subjectSim) };
     })
     .sort((a, b) => b.similarity - a.similarity);
 }
 
-/**
- * The mismatch guard. Decides whether a specific candidate image is a
- * safe recommendation for a post, combining:
- *  1. Overall similarity floor — is this remotely related at all?
- *  2. Hard category reject — same top-level category as the best match?
- *  3. Subject-level check — same specific subject as the best match,
- *     even within the same category (this is what catches fox-vs-wolf,
- *     since both are "animal" but different species).
- *
- * If forcedCandidateFile is omitted, the guard evaluates the top-ranked
- * candidate. If provided, it evaluates that specific image instead —
- * this is how you test "force the wolf as a candidate for the fox post."
- */
 export function matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateFile } = {}) {
   const ranked = rankCandidates(postEmbedding, imageEmbeddings);
   const top = ranked[0];
@@ -48,7 +32,7 @@ export function matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateF
 
   const expectedCategory = top.category;
   const expectedSubject = top.subject;
-  const expectedSubjectEmbedding = top.subjectEmbedding;
+  const expectedCaptionEmbedding = top.captionEmbedding;
 
   const candidate = forcedCandidateFile
     ? imageEmbeddings.find((c) => c.file === forcedCandidateFile)
@@ -77,12 +61,14 @@ export function matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateF
   }
 
   if (candidate.file !== top.file) {
-    const subjectSim = cosineSimilarity(expectedSubjectEmbedding, candidate.subjectEmbedding);
-    if (subjectSim < SUBJECT_MISMATCH_THRESHOLD) {
+    // Caption-vs-caption comparison, NOT subject-vs-subject - bare subject
+    // words don't discriminate species reliably (see threshold comment).
+    const captionSim = cosineSimilarity(expectedCaptionEmbedding, candidate.captionEmbedding);
+    if (captionSim < SUBJECT_MISMATCH_THRESHOLD) {
       return {
         decision: "rejected",
         candidate: candidate.file,
-        reason: `${expectedCategory} subject mismatch: expected "${expectedSubject}", detected "${candidate.subject}" (subject similarity ${subjectSim.toFixed(3)} < ${SUBJECT_MISMATCH_THRESHOLD})`,
+        reason: `${expectedCategory} subject mismatch: expected "${expectedSubject}", detected "${candidate.subject}" (caption similarity ${captionSim.toFixed(3)} < ${SUBJECT_MISMATCH_THRESHOLD})`,
       };
     }
   }
@@ -98,4 +84,3 @@ export function matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateF
       : "Accepted.",
   };
 }
-
