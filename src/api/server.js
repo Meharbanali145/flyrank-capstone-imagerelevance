@@ -1,33 +1,38 @@
 ﻿import express from "express";
-import fs from "node:fs";
 import path from "node:path";
+import { getDb, initSchema } from "../db/schema.js";
 import { embedText } from "../matching/embeddings.js";
 import { matchAndGuard, rankCandidates } from "../matching/guard.js";
 
-const CORPUS_DIR = path.resolve("corpus");
-const IMAGE_EMBEDDINGS_FILE = path.join(CORPUS_DIR, "image-embeddings.json");
-const APPROVALS_FILE = path.resolve("data", "approvals.json");
+function loadImageEmbeddingsFromDb(db) {
+  const rows = db.prepare(`
+    SELECT i.file, i.category, i.subject, i.caption, i.confidence,
+           i.needs_review AS needsReview,
+           e.caption_embedding AS captionEmbeddingJson,
+           e.subject_embedding AS subjectEmbeddingJson
+    FROM images i
+    JOIN image_embeddings e ON e.image_id = i.id
+  `).all();
 
-function loadImageEmbeddings() {
-  return JSON.parse(fs.readFileSync(IMAGE_EMBEDDINGS_FILE, "utf-8").replace(/^\uFEFF/, ""));
-}
-
-function loadApprovals() {
-  if (!fs.existsSync(APPROVALS_FILE)) return [];
-  return JSON.parse(fs.readFileSync(APPROVALS_FILE, "utf-8").replace(/^\uFEFF/, ""));
-}
-
-function saveApprovals(approvals) {
-  fs.mkdirSync(path.dirname(APPROVALS_FILE), { recursive: true });
-  fs.writeFileSync(APPROVALS_FILE, JSON.stringify(approvals, null, 2));
+  return rows.map((r) => ({
+    file: r.file,
+    category: r.category,
+    subject: r.subject,
+    caption: r.caption,
+    confidence: r.confidence,
+    needsReview: !!r.needsReview,
+    captionEmbedding: JSON.parse(r.captionEmbeddingJson),
+    subjectEmbedding: JSON.parse(r.subjectEmbeddingJson),
+  }));
 }
 
 export function createApp() {
   const app = express();
   app.use(express.json());
 
-  // Validation at the boundary: reject malformed input with a clean 4xx,
-  // never let it reach matching logic and throw a 500.
+  const db = getDb();
+  initSchema(db);
+
   function requirePostText(req, res, next) {
     const { text } = req.body ?? {};
     if (typeof text !== "string" || !text.trim()) {
@@ -36,27 +41,45 @@ export function createApp() {
     next();
   }
 
+  function recordPostAndSuggestion(text, guardResult) {
+    const insertPost = db.prepare(`INSERT INTO posts (text) VALUES (?)`);
+    const { lastInsertRowid: postId } = insertPost.run(text);
+
+    let imageId = null;
+    if (guardResult.candidate) {
+      const row = db.prepare(`SELECT id FROM images WHERE file = ?`).get(guardResult.candidate);
+      imageId = row ? row.id : null;
+    }
+
+    db.prepare(`
+      INSERT INTO suggestions (post_id, image_id, decision, similarity, reason)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(postId, imageId, guardResult.decision, guardResult.similarity ?? null, guardResult.reason);
+
+    return postId;
+  }
+
   /**
    * POST /posts/match
    * Body: { text: "post content" }
-   * Runs the full pipeline: embed -> rank -> guard. Returns the guard's
-   * decision plus the top few ranked candidates for transparency.
+   * Runs embed -> rank -> guard, and persists the post + suggestion as
+   * real database rows (not just an in-memory response).
    */
   app.post("/posts/match", requirePostText, async (req, res) => {
     try {
-      const imageEmbeddings = loadImageEmbeddings();
+      const imageEmbeddings = loadImageEmbeddingsFromDb(db);
       const postEmbedding = await embedText(req.body.text, "query");
       const ranked = rankCandidates(postEmbedding, imageEmbeddings);
       const guardResult = matchAndGuard(postEmbedding, imageEmbeddings);
 
+      const postId = recordPostAndSuggestion(req.body.text, guardResult);
+
       res.json({
+        postId,
         post: req.body.text,
         decision: guardResult,
         topCandidates: ranked.slice(0, 5).map((r) => ({
-          file: r.file,
-          subject: r.subject,
-          category: r.category,
-          similarity: r.similarity,
+          file: r.file, subject: r.subject, category: r.category, similarity: r.similarity,
         })),
       });
     } catch (err) {
@@ -65,23 +88,19 @@ export function createApp() {
     }
   });
 
-  /**
-   * POST /posts/match/force
-   * Body: { text: "post content", candidateFile: "animal-gray_wolf-0.jpg" }
-   * Forces the guard to evaluate a specific candidate instead of the
-   * top-ranked one. This is how Probe 3 ("force the wolf as a candidate
-   * for the fox post") is exercised via the API directly.
-   */
   app.post("/posts/match/force", requirePostText, async (req, res) => {
     const { candidateFile } = req.body ?? {};
     if (typeof candidateFile !== "string" || !candidateFile.trim()) {
       return res.status(400).json({ error: "Request body must include a non-empty string field 'candidateFile'." });
     }
     try {
-      const imageEmbeddings = loadImageEmbeddings();
+      const imageEmbeddings = loadImageEmbeddingsFromDb(db);
       const postEmbedding = await embedText(req.body.text, "query");
       const guardResult = matchAndGuard(postEmbedding, imageEmbeddings, { forcedCandidateFile: candidateFile });
-      res.json({ post: req.body.text, forcedCandidate: candidateFile, decision: guardResult });
+
+      const postId = recordPostAndSuggestion(req.body.text, guardResult);
+
+      res.json({ postId, post: req.body.text, forcedCandidate: candidateFile, decision: guardResult });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Matching failed", detail: err.message });
@@ -89,26 +108,37 @@ export function createApp() {
   });
 
   /**
-   * GET /images
-   * Lists every tagged image with its tags — for browsing/inspection.
+   * GET /images - lists every image row from the database.
    */
   app.get("/images", (req, res) => {
     try {
-      const imageEmbeddings = loadImageEmbeddings();
-      res.json(imageEmbeddings.map(({ file, subject, category, confidence, needsReview }) => ({
-        file, subject, category, confidence, needsReview,
-      })));
+      const rows = db.prepare(`
+        SELECT file, category, subject, confidence, needs_review AS needsReview FROM images
+      `).all();
+      res.json(rows.map((r) => ({ ...r, needsReview: !!r.needsReview })));
     } catch (err) {
       res.status(500).json({ error: "Failed to load images", detail: err.message });
     }
   });
 
   /**
-   * POST /reviews
-   * Body: { postText, candidateFile, decision: "approve" | "reject", reviewer?, note? }
-   * Records a human review decision on a specific post/image pairing.
-   * This is the "review API" workflow — approve, reject, and (via GET
-   * below) inspect why.
+   * GET /suggestions - inspect every match decision ever made, with the
+   * originating post text and (if accepted) which image file.
+   */
+  app.get("/suggestions", (req, res) => {
+    const rows = db.prepare(`
+      SELECT s.id, p.text AS postText, i.file AS candidateFile, s.decision, s.similarity, s.reason, s.created_at AS createdAt
+      FROM suggestions s
+      JOIN posts p ON p.id = s.post_id
+      LEFT JOIN images i ON i.id = s.image_id
+      ORDER BY s.id DESC
+    `).all();
+    res.json(rows);
+  });
+
+  /**
+   * POST /reviews - records a human approve/reject decision, persisted
+   * as a real row.
    */
   app.post("/reviews", (req, res) => {
     const { postText, candidateFile, decision, reviewer, note } = req.body ?? {};
@@ -122,29 +152,21 @@ export function createApp() {
       return res.status(400).json({ error: "Field 'decision' must be exactly 'approve' or 'reject'." });
     }
 
-    const approvals = loadApprovals();
-    const entry = {
-      id: approvals.length + 1,
-      postText,
-      candidateFile,
-      decision,
-      reviewer: typeof reviewer === "string" ? reviewer : null,
-      note: typeof note === "string" ? note : null,
-      reviewedAt: new Date().toISOString(),
-    };
-    approvals.push(entry);
-    saveApprovals(approvals);
+    const result = db.prepare(`
+      INSERT INTO reviews (post_text, candidate_file, decision, reviewer, note)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(postText, candidateFile, decision, reviewer ?? null, note ?? null);
 
+    const entry = db.prepare(`SELECT * FROM reviews WHERE id = ?`).get(result.lastInsertRowid);
     res.status(201).json(entry);
   });
 
   /**
-   * GET /reviews
-   * Lists every recorded review decision, most recent first.
+   * GET /reviews - lists every recorded review decision, most recent first.
    */
   app.get("/reviews", (req, res) => {
-    const approvals = loadApprovals();
-    res.json(approvals.slice().reverse());
+    const rows = db.prepare(`SELECT * FROM reviews ORDER BY id DESC`).all();
+    res.json(rows);
   });
 
   app.get("/health", (req, res) => res.json({ status: "ok" }));
