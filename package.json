@@ -7,7 +7,8 @@
   "scripts": {
     "fetch-corpus": "node scripts/fetch-images.js",
     "ingest": "node src/jobs/ingestImages.js",
-    "dev": "node src/index.js"
+    "dev": "node src/index.js",
+    "embed-images": "node src/jobs/embedImages.js"
   },
   "license": "MIT",
   "dependencies": {

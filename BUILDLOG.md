@@ -109,3 +109,7 @@ corpus, wired into a batch job with retries.
 ---
 
 ## Phase 4 — Production layer & eval
+
+## Phase 3 - Matching and guard
+
+- Measured 5 real post-vs-corpus similarity scores before picking SIMILARITY_FLOOR: kitchen-faucet 0.462 (correct reject), salad 0.536 (genuine match), constellations 0.635 (false-positive match against mountain landscape captions), hiking 0.663 (genuine match), architecture 0.782 (genuine match). No single floor separates all 5 correctly - constellations (should reject) scores higher than salad (should accept). Chose 0.65 over 0.55 deliberately: it correctly rejects the constellations false-positive at the cost of also rejecting the salad post as a false negative. This follows the brief's own stated priority - avoiding a wrong match matters more than catching every right one. Documented as a known precision/recall tradeoff, to be quantified properly against the labeled eval set in Phase 4.
